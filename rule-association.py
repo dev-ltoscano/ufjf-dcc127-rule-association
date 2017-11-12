@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# http://artedosdados.blogspot.com.br/2015/02/regras-de-associacao-em-python-modulo.html
 
 import argparse
 import pandas as pd
@@ -10,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--DB_PATH", required=False, type=str, default="database-test.csv")
 parser.add_argument("--ATT_PATH", required=False, type=str, default="attributes.csv")
 parser.add_argument("--SUPP", required=False, type=float, default=0.01)
-parser.add_argument("--CONF", required=False, type=float, default=0.8)
+parser.add_argument("--CONF", required=False, type=float, default=0.5)
 args = parser.parse_args()
 
 DB_PATH = args.DB_PATH
@@ -83,6 +84,12 @@ def getRuleConfidence(rule, trans):
     
     return itemABFreq / itemAFreq
 
+def getRuleLift(ruleB, ruleConf, trans):
+    itemBFreq = getItemFrequency(ruleB, trans)
+    suppB = itemBFreq / len(trans)
+    
+    return ruleConf / suppB
+
 # Retorna os itens frequentes de tamanho N
 def getFrequentItems(items, trans, tam, supp):
     # Faz a combinação dos itens com tamanho N
@@ -151,12 +158,13 @@ def apriori(items, trans):
                 ruleConf = getRuleConfidence(rule, trans)
                 
                 if ruleConf >= CONF:
-                    rules.append([rule, ruleSupp, ruleConf])
+                    ruleLift = getRuleLift(rule[1], ruleConf, trans)
+                    rules.append([rule, ruleSupp, ruleConf, ruleLift])
                     
     print("Total de regras=",len(rules))
             
     for rule in rules:
-        print(set(rule[0][0]), "->", set(rule[0][1]), "[ SUPP=" + str(rule[1]) + ", CONF="+ str(rule[2]) + " ]")
+        print(set(rule[0][0]), "->", set(rule[0][1]), "[ SUPP=" + str(rule[1]) + ", CONF="+ str(rule[2]) + ", LIFT="+ str(rule[3]) + " ]")
 
 attributes = readAttributes(ATT_PATH)
 print("Total de atributos: " + str(len(attributes)))
