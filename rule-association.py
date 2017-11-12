@@ -10,8 +10,8 @@ from collections import Counter
 parser = argparse.ArgumentParser()
 parser.add_argument("--DB_PATH", required=False, type=str, default="database-test.csv")
 parser.add_argument("--ATT_PATH", required=False, type=str, default="attributes.csv")
-parser.add_argument("--SUPP", required=False, type=float, default=0.01)
-parser.add_argument("--CONF", required=False, type=float, default=0.5)
+parser.add_argument("--SUPP", required=False, type=float, default=0.03)
+parser.add_argument("--CONF", required=False, type=float, default=0.6)
 args = parser.parse_args()
 
 DB_PATH = args.DB_PATH
@@ -19,6 +19,7 @@ ATT_PATH = args.ATT_PATH
 SUPP = args.SUPP
 CONF = args.CONF
 
+# Faz a leitura dos atributos do dataset
 def readAttributes(filePath):
     file = open(filePath, 'r')
     return file.read().split(',')
@@ -59,6 +60,7 @@ def parseItems(transactions):
     
     return set(itemsList)
 
+# Obtém a frequência de um item
 def getItemFrequency(item, trans):
     itemCount = []
     
@@ -71,23 +73,33 @@ def getItemFrequency(item, trans):
             
     return len(itemCount)
 
+# Calcula o suporte da regra
 def getRuleSupport(rule, trans):
+    # A=>B para { A, B }
     ruleAB = set(rule[0]) | set(rule[1])
+    # Obtem a frequência de { A, B }
     itemFreq = getItemFrequency(ruleAB, trans)
+    # Suporte = freq({A,B})/N
     return itemFreq / len(trans)
 
+# Calcula a confiança da regra
 def getRuleConfidence(rule, trans):
+    # A=>B para { A, B }
     ruleAB = set(rule[0]) | set(rule[1])
-    
+    # Obtém a frequência de { A, B }
     itemABFreq = getItemFrequency(ruleAB, trans)
+    # Obtém a frequência de { A }
     itemAFreq = getItemFrequency(rule[0], trans)
-    
+    # Confiança = freq({A,B})/freq({A})
     return itemABFreq / itemAFreq
 
+# Calcula a correlação Lift da regra
 def getRuleLift(ruleB, ruleConf, trans):
+    # Obtém a frequência de {B}
     itemBFreq = getItemFrequency(ruleB, trans)
+    # Obtém o suporte de {B}=freq({B})/N
     suppB = itemBFreq / len(trans)
-    
+    # Calcula a correlação Lift=conf({A,B})/supp({B})
     return ruleConf / suppB
 
 # Retorna os itens frequentes de tamanho N
@@ -113,17 +125,18 @@ def getFrequentItems(items, trans, tam, supp):
             freqItems.append([item, freq])
             
     return dict(freqItems)
-        
+
+# Algoritmo Apriori para mineração de regras de associação
 def apriori(items, trans):
+    print("\nObtendo itens frequentes...")
+    
     allFreqItemList = {}
     cand_items = items
-    
-    print("\nObtendo itens frequentes...")
     
     for tam in range(1, len(items)):
         print("Tamanho " + str(tam) + "...")
         freqItem = getFrequentItems(cand_items, trans, tam, SUPP)
-        print("Encontrados=",len(freqItem))
+        print("Encontrados=", len(freqItem))
         
         if(len(freqItem) > 0):
             allFreqItemList.update(freqItem)
@@ -146,6 +159,7 @@ def apriori(items, trans):
     print("Total de itens frequentes: ", len(tmpAllFreqItems))
 
     print("\nCriando regras de associação...")
+    
     tmpRules = set(itertools.combinations(tmpAllFreqItems, 2))
     rules = []
     
@@ -153,29 +167,35 @@ def apriori(items, trans):
         # Verifica se não há intersecção entre A => B
         if len(set(rule[0]).intersection(rule[1])) == 0:
             ruleSupp = getRuleSupport(rule, trans)
-            
+            # Verifica se a regra atende ao parâmetro de suporte
             if ruleSupp >= SUPP:
                 ruleConf = getRuleConfidence(rule, trans)
-                
+                # Verifica se a regra atende ao parâmetro de confiança
                 if ruleConf >= CONF:
                     ruleLift = getRuleLift(rule[1], ruleConf, trans)
                     rules.append([rule, ruleSupp, ruleConf, ruleLift])
-                    
+
     print("Total de regras=",len(rules))
-            
+
+    # Imprime as regras geradas
     for rule in rules:
         print(set(rule[0][0]), "->", set(rule[0][1]), "[ SUPP=" + str(rule[1]) + ", CONF="+ str(rule[2]) + ", LIFT="+ str(rule[3]) + " ]")
 
+# Carrega os atributos da base de dados
 attributes = readAttributes(ATT_PATH)
 print("Total de atributos: " + str(len(attributes)))
 
+# Carrega a base de dados
 dataSet = readDataset(DB_PATH, attributes)
 print("Total de dados: " + str(len(dataSet)))
 
+# Faz a leitura da base de dados para o formato de transações
 transactions = parseTransactions(dataSet, attributes)
 print("Total de transações: " + str(len(transactions)))
 
+# Obtém os itens presentes nas transações
 items = parseItems(transactions)
 print("Total de itens das transações: " + str(len(attributes)))
 
+# Executa o algoritmo Apriori
 apriori(items, transactions)
