@@ -8,16 +8,18 @@ import itertools
 from collections import Counter
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--DB_PATH", required=False, type=str, default="database-test.csv")
-parser.add_argument("--ATT_PATH", required=False, type=str, default="attributes.csv")
+parser.add_argument("--DB_PATH", required=False, type=str, default="database-07.csv")
+parser.add_argument("--ATT_PATH", required=False, type=str, default="attr-07.csv")
 parser.add_argument("--SUPP", required=False, type=float, default=0.03)
-parser.add_argument("--CONF", required=False, type=float, default=0.6)
+parser.add_argument("--CONF", required=False, type=float, default=0.5)
+parser.add_argument("--LIFT", required=False, type=float, default=1.0)
 args = parser.parse_args()
 
 DB_PATH = args.DB_PATH
 ATT_PATH = args.ATT_PATH
 SUPP = args.SUPP
 CONF = args.CONF
+LIFT = args.LIFT
 
 # Faz a leitura dos atributos do dataset
 def readAttributes(filePath):
@@ -136,6 +138,7 @@ def apriori(items, trans):
     for tam in range(1, len(items)):
         print("Tamanho " + str(tam) + "...")
         freqItem = getFrequentItems(cand_items, trans, tam, SUPP)
+        #print(freqItem)
         print("Encontrados=", len(freqItem))
         
         if(len(freqItem) > 0):
@@ -173,7 +176,9 @@ def apriori(items, trans):
                 # Verifica se a regra atende ao parâmetro de confiança
                 if ruleConf >= CONF:
                     ruleLift = getRuleLift(rule[1], ruleConf, trans)
-                    rules.append([rule, ruleSupp, ruleConf, ruleLift])
+                    # Verifica se a regra atende ao parâmetro de lift
+                    if ruleLift >= LIFT:
+                        rules.append([rule, ruleSupp, ruleConf, ruleLift])
 
     print("Total de regras=",len(rules))
 
@@ -191,10 +196,12 @@ print("Total de dados: " + str(len(dataSet)))
 
 # Faz a leitura da base de dados para o formato de transações
 transactions = parseTransactions(dataSet, attributes)
+#print(transactions)
 print("Total de transações: " + str(len(transactions)))
 
 # Obtém os itens presentes nas transações
 items = parseItems(transactions)
+#print(items)
 print("Total de itens das transações: " + str(len(attributes)))
 
 # Executa o algoritmo Apriori
